@@ -1,0 +1,6 @@
+pyproject.toml
+app_ddl_creation.egg-info/PKG-INFO
+app_ddl_creation.egg-info/SOURCES.txt
+app_ddl_creation.egg-info/dependency_links.txt
+app_ddl_creation.egg-info/requires.txt
+app_ddl_creation.egg-info/top_level.txt

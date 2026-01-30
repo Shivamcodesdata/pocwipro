@@ -1,0 +1,8 @@
+{
+  "base_path": "C:\\Users\\shiva\\OneDrive\\Documents\\dataproject\\DataProject\\app-ddl-creation\\Layer",
+  "layer_catalog_map": {
+    "bronze": "bronze",
+    "silver": "silver",
+    "gold": "gold"
+}
+}

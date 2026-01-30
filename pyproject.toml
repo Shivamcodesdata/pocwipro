@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "app_ddl_creation"
+version = "0.1.2"
+description = "Databricks DDL execution framework"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+    { name = "Shivam" }
+]
+
+dependencies = [
+    "pyspark>=3.3.0"
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["main*", "lib*"]
