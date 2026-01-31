@@ -10,24 +10,21 @@ spark = SparkSession.builder.enableHiveSupport().getOrCreate()
 
 # ---------------- 2️⃣ Load Config ----------------
 def load_config(env: str) -> dict:
-    """
-    Load environment-specific config file.
-    Returns full config dict containing:
-    - base_path
-    - layer_catalog_map
-    Raises FileNotFoundError or ValueError if config is missing or invalid.
-    """
-    config_path = os.path.join("env_config", env, "config.json")
+    # path of current file (driver.py)
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # move up to app_ddl_creation/
+    project_root = os.path.abspath(os.path.join(current_dir, "..", ".."))
+
+    config_path = os.path.join(
+        project_root, "env_config", env, "config.json"
+    )
+
     if not os.path.exists(config_path):
         raise FileNotFoundError(f"Config not found: {config_path}")
 
     with open(config_path, "r") as f:
         config = json.load(f)
-
-    if "base_path" not in config:
-        raise ValueError(f"'base_path' not defined in {config_path}")
-    if "layer_catalog_map" not in config:
-        raise ValueError(f"'layer_catalog_map' not defined in {config_path}")
 
     return config
 
@@ -36,14 +33,23 @@ def load_config(env: str) -> dict:
 def find_sql_file(base_path: str, layer: str, table_name: str) -> str:
     """
     Locate SQL file for a given table in a specific layer.
-    Returns the file path if exists, else raises FileNotFoundError.
     """
-    file_path = os.path.join(base_path, layer, f"{table_name}.sql")
+    file_path = os.path.join(
+        base_path,
+        "Layer",      # important
+        layer.lower(),
+        f"{table_name}.sql"
+    )
+
+    print(file_path)
+
     if os.path.exists(file_path):
         print(f"✅ SQL file found: {file_path}")
         return file_path
-    else:
-        raise FileNotFoundError(f"SQL file not found for table '{table_name}' in layer '{layer}'")
+
+    raise FileNotFoundError(
+        f"SQL file not found: layer={layer}, table={table_name}"
+    )
 
 
 # ---------------- 4️⃣ Check if Table Exists ----------------
@@ -81,7 +87,11 @@ def parse_columns_from_sql(sql_file: str) -> dict:
     content = read_sql_file(sql_file)
     content_clean = " ".join(content.replace("\n", " ").split())
 
-    match = re.search(r"create table\s+\w+\s*\((.*)\)", content_clean, re.IGNORECASE)
+    match = re.search(
+    r"create\s+table\s+(?:if\s+not\s+exists\s+)?[\w\.]+\s*\((.*?)\)\s*using",
+    content_clean,
+    re.IGNORECASE | re.DOTALL
+)
     if not match:
         raise ValueError(f"Cannot parse columns from SQL file: {sql_file}")
 

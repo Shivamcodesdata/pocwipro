@@ -21,6 +21,7 @@ def parse_args():
     parser.add_argument("--layer", required=True, help="Layer: bronze / silver / gold")
     parser.add_argument("--table_name", required=True, help="Target table name")
     return parser.parse_args()
+    
 
 
 # ---------------- 3️⃣ Main Function ----------------
@@ -49,7 +50,8 @@ def run_driver(env: str, layer: str, table_name: str):
         raise ValueError(f"Invalid layer '{layer}'. Must be one of {list(layer_catalog_map.keys())}")
 
     catalog_name = layer_catalog_map[layer_lower]
-    spark.sql(f"USE CATALOG {catalog_name}")
+    spark.sql("USE CATALOG workspace")
+    spark.sql("USE SCHEMA bronze")
     print(f"🔄 Using catalog: {catalog_name}")
 
     # Step 4: Check if table exists in the catalog
@@ -83,5 +85,19 @@ def run_driver(env: str, layer: str, table_name: str):
 # run_driver(env=args.env, layer=args.layer, table_name=args.table_name)
 
 # ---------------- 5️⃣ Example Notebook Usage ----------------
-# from main.driver import run_driver
-# run_driver(env="dev", layer="bronze", table_name="sample")
+# from app_ddl_creation.main.driver import run_driver
+# run_driver(env="dev", layer="bronze", table_name="sampleA")
+
+def cli():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--env", required=True)
+    parser.add_argument("--layer", required=True)
+    parser.add_argument("--table", required=True)
+
+    args = parser.parse_args()
+
+    run_driver(
+        env=args.env,
+        layer=args.layer,
+        table_name=args.table
+    )

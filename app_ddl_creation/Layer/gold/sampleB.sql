@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS gold.sampleB (
+CREATE TABLE IF NOT EXISTS sampleB (
     total_orders BIGINT,
     total_revenue DOUBLE,
     report_date DATE,

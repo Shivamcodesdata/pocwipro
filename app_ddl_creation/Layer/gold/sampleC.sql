@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS gold.sampleC (
+CREATE TABLE IF NOT EXISTS sampleC (
     event_type STRING,
     event_count BIGINT,
     report_date DATE,

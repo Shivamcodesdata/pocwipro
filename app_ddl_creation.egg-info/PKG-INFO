@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: app_ddl_creation
-Version: 0.1.3
+Version: 0.1.5
 Summary: Databricks DDL execution framework
 Author: Shivam
 Requires-Python: >=3.8

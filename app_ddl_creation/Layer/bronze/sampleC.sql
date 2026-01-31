@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS bronze.sampleC (
+CREATE TABLE IF NOT EXISTS sampleC (
     event_id STRING,
     event_type STRING,
     event_time TIMESTAMP,
