@@ -1,5 +1,6 @@
 # ---------------- 1️⃣ Import Libraries & Helper Scripts ----------------
 import argparse
+import sys
 from app_ddl_creation.lib.scripts.helper import (
     load_config,
     find_sql_file,
@@ -20,6 +21,7 @@ def parse_args():
     parser.add_argument("--env", required=True, help="Environment: dev / uat / prd")
     parser.add_argument("--layer", required=True, help="Layer: bronze / silver / gold")
     parser.add_argument("--table_name", required=True, help="Target table name")
+    print(sys.argv)
     return parser.parse_args()
     
 
@@ -79,25 +81,14 @@ def run_driver(env: str, layer: str, table_name: str):
     print("🔎 Pre-check and execution completed successfully.")
 
 
-
-# ---------------- 4️⃣ Example CLI Usage ----------------
-# args = parse_args()
-# run_driver(env=args.env, layer=args.layer, table_name=args.table_name)
-
-# ---------------- 5️⃣ Example Notebook Usage ----------------
-# from app_ddl_creation.main.driver import run_driver
-# run_driver(env="dev", layer="bronze", table_name="sampleA")
-
-def cli():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--env", required=True)
-    parser.add_argument("--layer", required=True)
-    parser.add_argument("--table", required=True)
-
-    args = parser.parse_args()
-
+def main():
+    args = parse_args()
     run_driver(
         env=args.env,
         layer=args.layer,
-        table_name=args.table
+        table_name=args.table_name
     )
+
+
+if __name__ == "__main__":
+    main()

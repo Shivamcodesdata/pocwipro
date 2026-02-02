@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "app_ddl_creation"
-version = "0.1.5"
+version = "0.1.6"
 description = "Databricks DDL execution framework"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.scripts]
-app-ddl-creation = "app_ddl_creation.main.driver:cli"
+ddl-runner = "app_ddl_creation.main.driver:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

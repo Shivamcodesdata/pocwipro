@@ -1,2 +1,2 @@
 [console_scripts]
-app-ddl-creation = app_ddl_creation.main.driver:cli
+ddl-runner = app_ddl_creation.main.driver:main
