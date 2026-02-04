@@ -5,8 +5,12 @@ def test_load_config_success(monkeypatch, temp_config):
 
     config = load_config("dev")
 
-    assert "layer_catalog_map" in config
-    assert config["layer_catalog_map"]["gold"] == "gold"
+    assert "base_path" in config
+    assert "catalog" in config
+    assert "layer_schema_map" in config
+
+    assert isinstance(config["layer_schema_map"], dict)
+    assert "gold" in config["layer_schema_map"]
 
 
 

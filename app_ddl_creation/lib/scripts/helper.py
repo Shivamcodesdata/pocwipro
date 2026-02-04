@@ -53,17 +53,28 @@ def find_sql_file(base_path: str, layer: str, table_name: str) -> str:
 
 
 # ---------------- 4️⃣ Check if Table Exists ----------------
-def check_table_exists(table_name: str) -> bool:
+def check_table_exists(spark, catalog: str, schema: str, table: str) -> bool:
     """
-    Check if a table already exists in Spark catalog.
-    Returns True if exists, False otherwise.
+    Unity Catalog safe existence check.
+    Verifies both metadata AND queryability.
     """
-    tables = [t.name.lower() for t in spark.catalog.listTables()]
-    if table_name.lower() in tables:
-        print(f"⚠️ Table '{table_name}' already exists in Spark catalog.")
+    table = table.lower()
+
+    result = spark.sql(
+        f"SHOW TABLES IN {catalog}.{schema} LIKE '{table}'"
+    ).collect()
+
+    if not result:
+        print(f"✅ Table '{catalog}.{schema}.{table}' does not exist.")
+        return False
+
+    # Extra safety: try a lightweight DESCRIBE
+    try:
+        spark.sql(f"DESCRIBE TABLE {catalog}.{schema}.{table}")
+        print(f"⚠️ Table '{catalog}.{schema}.{table}' exists.")
         return True
-    else:
-        print(f"✅ Table '{table_name}' does not exist in Spark catalog.")
+    except Exception:
+        print(f"⚠️ Metadata found but table not accessible: {catalog}.{schema}.{table}")
         return False
 
 
@@ -110,14 +121,16 @@ def parse_columns_from_sql(sql_file: str) -> dict:
 
 
 # ---------------- 7️⃣ Get Table Schema ----------------
-def get_table_schema(table_name: str) -> dict:
+def get_table_schema(spark, table_name: str) -> dict:
     """
     Returns Spark table schema as {column_name: datatype}.
     Column names are lowercase and datatypes normalized.
     """
     df = spark.table(table_name)
-    schema_dict = {f.name.lower(): normalize_datatype(f.dataType.simpleString()) for f in df.schema.fields}
-    return schema_dict
+    return {
+        f.name.lower(): normalize_datatype(f.dataType.simpleString())
+        for f in df.schema.fields
+    }
 
 
 # ---------------- 8️⃣ Normalize Datatype ----------------
@@ -137,45 +150,151 @@ def normalize_datatype(datatype: str) -> str:
     return dt
 
 
+
+def detect_schema_drift(sql_columns: dict, table_schema: dict) -> dict:
+    return {
+        "missing_in_table": {
+            col: sql_columns[col]
+            for col in sql_columns
+            if col not in table_schema
+        },
+        "type_mismatch": {
+            col: {
+                "sql": sql_columns[col],
+                "table": table_schema[col]
+            }
+            for col in sql_columns
+            if col in table_schema and sql_columns[col] != table_schema[col]
+        },
+        "extra_in_table": {
+            col: table_schema[col]
+            for col in table_schema
+            if col not in sql_columns
+        }
+    }
+
+
+def generate_alter_statements(full_table_name: str, drift: dict) -> list:
+    statements = []
+
+    # ADD COLUMN
+    for col, dtype in drift.get("missing_in_table", {}).items():
+        statements.append(
+            f"ALTER TABLE {full_table_name} ADD COLUMNS ({col} {dtype})"
+        )
+
+    # TYPE MISMATCH
+    for col, info in drift.get("type_mismatch", {}).items():
+        statements.append(
+            f"ALTER TABLE {full_table_name} ALTER COLUMN {col} TYPE {info['sql']}"
+        )
+
+    # -------- Improved messaging --------
+    if not statements:
+        if drift.get("extra_in_table"):
+            print(
+                "ℹ️ Schema drift detected: target table has extra columns "
+                "not present in source SQL. No action taken (DROP not allowed in v1.0)."
+            )
+        else:
+            print("✅ Source and target schemas are aligned. No changes required.")
+
+    return statements
+
 # ---------------- 9️⃣ Compare Schema and Alter Table ----------------
 def compare_schema_and_alter(table_name: str, sql_columns: dict) -> list:
     """
-    Compare SQL columns with table schema and:
-    1. Raise exception if SQL has fewer columns
-    2. ALTER TABLE to add extra columns
-    3. Raise exception if datatype mismatch
-    Returns: list of executed ALTER statements for logging
+    Compares source SQL schema with existing table schema and applies
+    allowed schema changes (ADD / TYPE ALTER).
+
+    DROP operations are intentionally not supported in v1.0.
     """
     executed_alters = []
-    existing_schema = get_table_schema(table_name)
 
-    existing_cols_set = set(existing_schema.keys())
-    sql_cols_set = set(sql_columns.keys())
+    # -----------------------------
+    # Step 1: Read existing schema
+    # -----------------------------
+    table_schema = get_table_schema(table_name)
 
-    # Case 1: SQL has fewer columns → Exception
-    if len(sql_cols_set) < len(existing_cols_set):
-        raise Exception(f"SQL file has fewer columns ({len(sql_cols_set)}) than existing table ({len(existing_cols_set)})")
+    # -----------------------------
+    # Step 2: Detect schema drift
+    # -----------------------------
+    drift = detect_schema_drift(sql_columns, table_schema)
 
-    # Case 2: SQL has extra columns → ALTER TABLE
-    extra_cols = sql_cols_set - existing_cols_set
-    for col in extra_cols:
-        datatype = sql_columns[col]
-        alter_query = f"ALTER TABLE {table_name} ADD COLUMNS ({col} {datatype})"
-        print(f"🔧 Executing: {alter_query}")
-        spark.sql(alter_query)
-        executed_alters.append(alter_query)
+    # -----------------------------
+    # Step 3: Inform about extra columns (NO DROP)
+    # -----------------------------
+    if drift.get("extra_in_table"):
+        print(
+            "ℹ️ Schema drift detected: target table has extra columns "
+            "not present in source SQL. No action taken (DROP not supported in v1.0)."
+        )
 
-    # Case 3: Check datatype for common columns
-    common_cols = sql_cols_set & existing_cols_set
-    for col in common_cols:
-        sql_type = sql_columns[col]
-        table_type = existing_schema[col]
-        if sql_type != table_type:
-            raise Exception(f"Datatype mismatch for column '{col}': SQL={sql_type}, Table={table_type}")
+    # -----------------------------
+    # Step 4: Generate ALTER statements
+    # -----------------------------
+    alter_stmts = generate_alter_statements(table_name, drift)
 
-    if executed_alters:
-        print(f"✅ Executed ALTER statements: {executed_alters}")
-    else:
-        print("✅ No ALTER needed. Table schema matches SQL.")
+    # -----------------------------
+    # Step 5: Apply ALTERs
+    # -----------------------------
+    for stmt in alter_stmts:
+        print(f"🔧 Executing: {stmt}")
+        spark.sql(stmt)
+        executed_alters.append(stmt)
+
+    # -----------------------------
+    # Step 6: Final messaging
+    # -----------------------------
+    if not executed_alters and not drift.get("extra_in_table"):
+        print("✅ Source and target schemas are aligned. No changes required.")
 
     return executed_alters
+
+def apply_schema_changes(
+    spark,
+    table_name: str,
+    alter_statements: list,
+    env: str,
+    drift: dict | None = None
+):
+    """
+    Applies schema changes based on generated ALTER statements.
+    PROD environment is protected by default.
+    """
+
+    # -----------------------------
+    # No ALTER statements
+    # -----------------------------
+    if not alter_statements:
+        if drift and drift.get("extra_in_table"):
+            print(
+                "ℹ️ Schema drift detected: target table has extra columns. "
+                "No action taken (DROP not supported in v1.0)."
+            )
+        else:
+            print("✅ Source and target schemas are aligned. No changes required.")
+        return
+
+    # -----------------------------
+    # Drift detected
+    # -----------------------------
+    print("⚠️ Schema drift detected. Applying allowed changes...")
+
+    # -----------------------------
+    # PROD safety guard
+    # -----------------------------
+    if env.lower() == "prod":
+        raise RuntimeError(
+            "🚫 Schema drift detected in PROD. "
+            "Automatic schema changes are disabled. Manual approval required."
+        )
+
+    # -----------------------------
+    # Execute ALTER statements
+    # -----------------------------
+    for stmt in alter_statements:
+        print(f"🔧 Executing: {stmt}")
+        spark.sql(stmt)
+
+    print("✅ Schema changes applied successfully.")

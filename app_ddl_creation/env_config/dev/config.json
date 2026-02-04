@@ -1,8 +1,9 @@
 {
-  "base_path": "/Workspace/Poc/pocwipro/app_ddl_creation/",
-  "layer_catalog_map": {
+  "base_path": "/Workspace/Poc/pocwipro/app_ddl_creation",
+  "catalog": "workspace",
+  "layer_schema_map": {
     "bronze": "bronze",
     "silver": "silver",
     "gold": "gold"
-}
+  }
 }

@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS silver.sampleA (
+CREATE TABLE IF NOT EXISTS sampleA (
     id BIGINT,
     name STRING,
     source_system STRING,
