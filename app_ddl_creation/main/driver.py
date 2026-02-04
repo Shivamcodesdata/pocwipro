@@ -52,8 +52,8 @@ def run_driver(env: str, layer: str, table_name: str):
         raise ValueError(f"Invalid layer '{layer}'. Must be one of {list(layer_catalog_map.keys())}")
 
     catalog_name = layer_catalog_map[layer_lower]
-    spark.sql("USE CATALOG workspace")
-    spark.sql("USE SCHEMA bronze")
+    # spark.sql("USE CATALOG workspace")
+    # spark.sql("USE SCHEMA bronze")
     print(f"🔄 Using catalog: {catalog_name}")
 
     # Step 4: Check if table exists in the catalog

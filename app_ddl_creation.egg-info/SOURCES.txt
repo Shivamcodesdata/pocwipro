@@ -23,3 +23,6 @@ app_ddl_creation/lib/scripts/__init_.py
 app_ddl_creation/lib/scripts/helper.py
 app_ddl_creation/main/__init__.py
 app_ddl_creation/main/driver.py
+test/test_driver.py
+test/test_helper_config.py
+test/test_helper_sql.py

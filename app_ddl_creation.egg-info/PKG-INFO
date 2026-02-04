@@ -1,8 +1,11 @@
 Metadata-Version: 2.4
 Name: app_ddl_creation
-Version: 0.1.6
+Version: 0.1.7
 Summary: Databricks DDL execution framework
 Author: Shivam
 Requires-Python: >=3.8
 Description-Content-Type: text/markdown
 Requires-Dist: pyspark>=3.3.0
+Provides-Extra: test
+Requires-Dist: pytest>=7.0; extra == "test"
+Requires-Dist: pytest-mock; extra == "test"
