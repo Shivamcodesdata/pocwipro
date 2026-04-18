@@ -1,57 +1,99 @@
-# DDL Automation Framework (Databricks)
+1. Executive Summary
 
-## 1. Executive Summary
-This project is a **DDL Automation Framework** built on **Databricks + PySpark**. It enables controlled, repeatable, and environment-aware creation and evolution of database tables using SQL files packaged inside a Python wheel.
+This project delivers a DDL Automation & Schema Governance Framework built on Databricks, PySpark, and Unity Catalog.
 
-The framework is designed for **enterprise data platforms** where schema changes must be:
-- Version-controlled
-- Environment-specific (dev / qa / prod)
-- Auditable
-- Safe to run multiple times
+The framework enables controlled, repeatable, and environment-aware table creation and schema evolution using source-controlled SQL files packaged as a Python wheel.
 
----
+It is specifically designed for enterprise and regulated data platforms where schema changes must be:
 
-## 2. Business Problem Statement
-In large data platforms, table creation and schema evolution often suffer from:
-- Manual execution of SQL scripts
-- Environment-specific inconsistencies
-- Missing governance and repeatability
-- High risk during schema changes
+Version-controlled
 
-This framework solves these problems by providing:
-- A single CLI-driven entry point
-- Layer-based table management (bronze / silver / gold)
-- Automated validation and execution
-- Testable and CI/CD-friendly architecture
+Environment-aware (dev / qa / prod)
 
----
+Safe to re-run
 
-## 3. High-Level Architecture
+Auditable
 
-### Components
-- **Python Wheel Package** – Core logic
-- **SQL Files** – Table definitions per layer
-- **Databricks Job / CLI** – Execution layer
-- **Pytest** – Local and CI validation
+Governed (no destructive operations)
 
-### Logical Flow
-1. User triggers the framework via CLI or Databricks Job
-2. Environment configuration is loaded
-3. SQL file is discovered based on layer and table name
-4. Target catalog/schema is resolved
-5. SQL is executed safely using Spark
+The solution replaces ad-hoc notebook-based DDL execution with a standardized, automation-first approach.
 
----
+2. Business Problem Statement
 
-## 4. Project Structure
+In large Databricks environments, schema management typically suffers from:
 
-```
+Manual execution of SQL via notebooks
+
+Inconsistent schemas across environments
+
+Lack of clear ownership and governance
+
+High production risk during schema changes
+
+Limited CI/CD and auditability
+
+These issues frequently lead to:
+
+Pipeline failures
+
+Production incidents
+
+Delayed releases
+
+Compliance concerns
+
+This framework addresses these challenges by introducing centralized, automated, and governed DDL execution.
+
+3. Solution Overview
+
+The DDL Automation Framework provides:
+
+A single CLI / job-driven entry point
+
+Layer-based table management (bronze / silver / gold)
+
+Fully qualified table resolution (catalog.schema.table)
+
+Automated schema validation and drift detection
+
+Strong production safety controls
+
+CI/CD-ready testing and packaging
+
+All table definitions are treated as code, not manual operations.
+
+4. High-Level Architecture
+Core Components
+
+Python Wheel Package
+Contains all execution logic and utilities
+
+SQL Definitions (Git-managed)
+One SQL file per table, per layer
+
+Databricks Job / CLI Execution
+Parameter-driven execution
+
+Pytest Test Suite
+Validation before deployment
+
+Logical Flow
+SQL (Git Repo)
+     ↓
+DDL Automation Framework (Wheel)
+     ↓
+Schema Validation & Governance
+     ↓
+Databricks / Unity Catalog
+workspace.<layer>.<table>
+
+5. Project Structure
 app_ddl_creation/
 ├── main/
-│   └── driver.py            # Entry point
+│   └── driver.py              # CLI / Job entry point
 │
 ├── lib/scripts/
-│   └── helper.py            # Core reusable logic
+│   └── helper.py              # Reusable core logic
 │
 ├── Layer/
 │   ├── bronze/
@@ -69,136 +111,214 @@ app_ddl_creation/
 │   └── test_helper_config.py
 │
 └── pyproject.toml
-```
 
----
 
-## 5. Configuration Management
+This structure enforces clear separation of concerns and supports scalable growth.
 
-Each environment has its own configuration file:
+6. Configuration Management
 
-**Example: `env_config/dev/config.json`**
-```json
+Each environment has its own configuration file.
+
+Example (env_config/dev/config.json)
 {
-  "layer_catalog_map": {
+  "base_path": "/Workspace/Poc/app_ddl_creation",
+  "catalog": "workspace",
+  "layer_schema_map": {
     "bronze": "bronze",
     "silver": "silver",
     "gold": "gold"
   }
 }
-```
 
-### Benefits
-- Environment isolation
-- No hardcoded catalogs or schemas
-- Easy promotion from dev → prod
+Key Benefits
 
----
+No hardcoded catalog or schema names
 
-## 6. SQL Management Strategy
+Clean environment isolation
 
-### Layer-Based Design
-- **Bronze** – Raw ingestion tables
-- **Silver** – Cleaned / conformed tables
-- **Gold** – Business-ready tables
+Simple promotion from dev → qa → prod
 
-Each table has exactly **one SQL file**:
-```
+Supports enterprise multi-environment standards
+
+7. SQL Management Strategy
+Layer-Based Design
+
+Bronze – Raw ingestion tables
+
+Silver – Cleaned and standardized tables
+
+Gold – Business-ready, consumption tables
+
+Each table has exactly one SQL file:
+
 Layer/<layer>/<table_name>.sql
-```
 
-### Why SQL Inside the Wheel
-- No dependency on Databricks Workspace paths
-- Immutable deployments
-- Compatible with CI/CD
+Why SQL Inside the Wheel
 
----
+No dependency on Databricks Workspace paths
 
-## 7. Execution Flow (Technical)
+Immutable, versioned deployments
 
-### Entry Point
-The framework is executed via a registered CLI entry point:
+CI/CD compatible
 
-```bash
+Eliminates manual file handling
+
+8. Execution Flow (Runtime)
+Entry Point
 app_ddl_creation --env=dev --layer=gold --table_name=sampleB
-```
 
-### Runtime Steps
-1. Parse input arguments
-2. Load environment configuration
-3. Locate SQL file using package resources
-4. Resolve catalog/schema
-5. Execute SQL via Spark
+Runtime Steps
 
----
+Parse input arguments
 
-## 8. Unit Testing Strategy
+Load environment configuration
 
-### Why Unit Testing
-- Catch errors before Databricks execution
-- Prevent missing SQL or config issues
-- Enable safe refactoring
+Locate SQL file
 
-### What Is Tested
-| Area | Covered |
-|-----|--------|
-Config loading | Yes |
-SQL discovery | Yes |
-SQL parsing | Yes |
-Table existence checks | Yes |
+Resolve fully qualified table name
+workspace.gold.sampleb
 
-### Tooling
-- **pytest**
-- Local SparkSession for validation
+Check table existence
 
----
+Validate schema
 
-## 9. CI/CD Readiness
+Apply safe schema changes (if allowed)
 
-The framework is designed to plug into CI/CD pipelines:
+Execute SQL via Spark
 
-1. Run pytest on every commit
-2. Build Python wheel
-3. Deploy wheel to Databricks
-4. Trigger jobs using parameters
+9. Schema Drift Detection & Governance
 
-This ensures:
-- Zero manual SQL execution
-- Controlled schema changes
-- Audit-ready deployments
+Before applying any change, the framework compares:
 
----
+SQL-defined schema
 
-## 10. Security & Governance
+Existing table schema
 
-- No hardcoded credentials
-- No workspace file dependencies
-- Version-controlled SQL and logic
-- Deterministic deployments
+Drift Scenarios Handled
+Scenario	Framework Behavior
+New column in SQL	ADD COLUMN
+Datatype mismatch	Block execution
+Column removed in SQL	Block execution
+Target has extra columns	Block execution
+PROD drift detected	Manual approval required
 
----
+DROP operations are intentionally not supported
 
-## 11. Key Advantages for Client
+This design prevents accidental data loss.
 
-- ✅ Standardized DDL execution
-- ✅ Reduced production risk
-- ✅ Faster onboarding of new tables
-- ✅ CI/CD compatible
-- ✅ Databricks best practices aligned
+10. Clear Runtime Feedback
 
----
+The framework provides explicit, user-friendly messages, for example:
 
-## 12. Future Enhancements
+❌ Schema drift detected
+Target table has extra column: legacy_flag
 
-- ALTER TABLE automation
-- Schema drift detection
-- Dry-run mode
-- Audit logging
-- Multi-catalog support
+DROP operations are not supported.
+No changes were applied.
 
----
 
-## 13. Conclusion
+This ensures users always understand:
 
-This DDL Automation Framework provides a **scalable, testable, and enterprise-ready** solution for managing table definitions in Databricks. It replaces manual processes with a governed, automated, and auditable approach suitable for modern data platforms.
+What was detected
 
+Why execution stopped
+
+What action is required
+
+11. Unit Testing & Quality Assurance
+Why Testing Matters
+
+Catch issues before Databricks execution
+
+Prevent broken SQL or config deployments
+
+Enable safe refactoring
+
+Covered Areas
+Component	Tested
+Config loading	✅
+SQL discovery	✅
+SQL parsing	✅
+Schema validation	✅
+Driver flow	✅
+
+Tests run locally and in CI pipelines using pytest.
+
+12. CI/CD Readiness
+
+The framework is designed for automated delivery:
+
+Run pytest on commit
+
+Build Python wheel
+
+Deploy wheel to Databricks
+
+Trigger jobs with parameters
+
+This enables:
+
+Zero manual DDL execution
+
+Consistent deployments
+
+Full audit trail
+
+13. Security & Governance
+
+No credentials stored in code
+
+No workspace file dependencies
+
+SQL and logic fully version-controlled
+
+Deterministic, repeatable execution
+
+Production safety guards built-in
+
+14. Key Client Benefits
+
+✅ Reduced production risk
+
+✅ Standardized schema management
+
+✅ Faster table onboarding
+
+✅ CI/CD aligned
+
+✅ Enterprise & compliance ready
+
+15. Version Status & Roadmap
+Version 1.0 (Locked)
+
+Included
+
+Table creation
+
+Schema drift detection
+
+Safe ALTER support
+
+Environment awareness
+
+Explicitly Excluded
+
+DROP operations
+
+Automatic PROD schema changes
+
+Future Enhancements
+
+Approval workflow for PROD
+
+Schema version history
+
+Dry-run mode
+
+Audit logging
+
+Multi-catalog expansion
+
+16. Conclusion
+
+This framework transforms schema management from a manual, high-risk activity into a governed, automated, and auditable engineering process, aligned with Databricks and enterprise best practices.
